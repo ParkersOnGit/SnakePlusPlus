@@ -7,17 +7,14 @@
 #include <thread>
 #include <cstdlib>
 #include <ctime>
+#include <algorithm>
 
 uint8_t board[28][28] = {};
 std::vector<std::array<int, 2>> snake;
-int apple[2] = { 8, 8 };
 
-int boardSizeX() {
-	return sizeof(board) / sizeof(board[0]);
-}
-int boardSizeY() {
-	return sizeof(board) / sizeof(board[1]);
-}
+int boardSizeX() { return sizeof(board) / sizeof(board[0]); }
+int boardSizeY() { return sizeof(board) / sizeof(board[1]); }
+int apple[2] = { 8, boardSizeY() / 2};
 
 enum TileType {
 	Board = 0,
@@ -71,35 +68,35 @@ void drawSection(int x, int y, TileType type) {
 		std::cout << "  ";
 		break;
 	}
-
-	moveCursor(1, boardSizeY() + 1);
-	colorConsole(0, 0, 0);
 }
 
 int main() {
-	char userInp = 'd';
+	char prevUserInp = 'd';
 	int xVec = 1;
 	int yVec = 0;
 	bool appleEaten = false;
 
 	snake.push_back({ 2, boardSizeY() / 2 });
 
+	std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
 	drawBoard();
 	drawSection(snake.front()[0], snake.front()[1], Board);
+	drawSection(apple[0], apple[1], Apple);
 
 	do {
 		drawSection(snake.front()[0], snake.front()[1], Board);
 
 		// get input
 		if (_kbhit()) {
-			userInp = _getch();
+			char userInp = _getch();
 
-			if (userInp == 'w') { xVec = 0; yVec = -1; }
-			if (userInp == 'a') { xVec = -1; yVec = 0; }
-			if (userInp == 's') { xVec = 0; yVec = 1; }
-			if (userInp == 'd') { xVec = 1; yVec = 0; }
-			if (userInp == 'e') { std::string str; std::getline(std::cin, str); }
-			if (userInp == '`') { break; }
+			if (userInp == 'w' && prevUserInp != 's') { xVec = 0; yVec = -1; prevUserInp = userInp; }
+			else if (userInp == 'a' && prevUserInp != 'd') { xVec = -1; yVec = 0; prevUserInp = userInp; }
+			else if (userInp == 's' && prevUserInp != 'w') { xVec = 0; yVec = 1; prevUserInp = userInp; }
+			else if (userInp == 'd' && prevUserInp != 'a') { xVec = 1; yVec = 0; prevUserInp = userInp; }
+			else if (userInp == 'e') { std::string str; std::getline(std::cin, str); }
+			else if (userInp == '`') { break; }
 		}
 
 		// move snake
@@ -112,28 +109,38 @@ int main() {
 			break;
 		}
 		// snake self detection
-		// not yet implemented
+		if (std::find(snake.begin(), snake.end() - 1, snake.back()) != snake.end() - 1) {
+			break;
+		}
 
 		// apple detection
 		if (snake.back()[0] == apple[0] && snake.back()[1] == apple[1]) {
 			appleEaten = true;
-			srand(static_cast<unsigned>(time(nullptr)));
-			apple[0] = rand() & boardSizeX();
-			srand(static_cast<unsigned>(time(nullptr)));
-			apple[1] = rand() & boardSizeY();
+			//do {
+				srand(static_cast<unsigned>(time(nullptr) + snake.back()[0] + snake.back()[1]));
+				apple[0] = rand() % boardSizeX() + 1;
+				srand(static_cast<unsigned>(time(nullptr) + snake.back()[0] + snake.back()[1]));
+				apple[1] = rand() % boardSizeY() + 1;
+
+				/*if (std::find(snake.begin(), snake.end(), std::array<int, 2> { apple[0], apple[1] }) == snake.end()) {
+					break;
+				}*/
+
+			//} while (true);
+
+			drawSection(apple[0], apple[1], Apple);
 		}
 
-		// render 
-		drawSection(apple[0], apple[1], Apple);
-
-		for (int i = 0; i < snake.size(); i++) {
-			drawSection(static_cast<int>(snake[i][0]), static_cast<int>(snake[i][1]), Snake);
-		}
+		// render snake
+		drawSection(static_cast<int>(snake.back()[0]), static_cast<int>(snake.back()[1]), Snake);
 
 		// sleep
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
 	} while (true);
+
+	moveCursor(1, boardSizeY() + 1);
+	colorConsole(0, 0, 0);
 
 	std::cout << "You lose!\nSCORE: " << snake.size() - 1;
 	std::cin.get();
