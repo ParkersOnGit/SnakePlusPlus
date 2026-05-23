@@ -8,9 +8,9 @@
 #include <algorithm>
 #include <random>
 
-uint8_t boardSize[2] = { 28, 28 };
-std::vector<std::array<int, 2>> snake;
-int apple[2];
+std::array<int, 2> boardSize = { 28, 28 };
+std::vector<std::array<int, 2>> snake = {{ 2, boardSize[1] / 2 }};
+std::array<int, 2> apple = { 8, boardSize[1] / 2 };
 
 enum TileType {
 	Board = 0,
@@ -18,8 +18,17 @@ enum TileType {
 	Apple = 2
 };
 
+struct Vector2i {
+	int x;
+	int y;
+	Vector2i(int xVal = 0, int yVal = 0) {
+		x = xVal; y = yVal;
+	}
+};
+
 void moveCursor(int x, int y) { std::cout << "\x1b[" << y << ";" << x << "H"; }
 void colorConsole(int r, int g, int b) { std::cout << "\033[48;2;" << r << ";" << g << ";" << b << "m"; }
+void clearColor() { std::cout << "\x1b[0m"; }
 void clearConsole() { std::cout << "\033[2J\033[1;1H"; }
 
 void drawSection(int x, int y, TileType type) {
@@ -53,20 +62,15 @@ void drawBoard() {
 	}
 
 	moveCursor(1, boardSize[1] + 1);
-	colorConsole(0, 0, 0);
+	clearColor();
 }
 
 int main() {
 	std::random_device rd;
-	std::mt19937 gen(rd());
 
 	char prevUserInp = 'd';
-	int xVec = 1;
-	int yVec = 0;
+	Vector2i Direction = Vector2i(1, 0);
 	bool appleEaten = false;
-
-	snake.push_back({ 2, boardSize[1] / 2 });
-	apple[0] = 8; apple[1] = boardSize[1] / 2;
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -80,16 +84,16 @@ int main() {
 		if (_kbhit()) {
 			char userInp = _getch();
 
-			if (userInp == 'w' && prevUserInp != 's') { xVec = 0; yVec = -1; prevUserInp = userInp; }
-			else if (userInp == 'a' && prevUserInp != 'd') { xVec = -1; yVec = 0; prevUserInp = userInp; }
-			else if (userInp == 's' && prevUserInp != 'w') { xVec = 0; yVec = 1; prevUserInp = userInp; }
-			else if (userInp == 'd' && prevUserInp != 'a') { xVec = 1; yVec = 0; prevUserInp = userInp; }
+			if (userInp == 'w' && prevUserInp != 's') { Direction.x = 0; Direction.y = -1; prevUserInp = userInp; }
+			else if (userInp == 'a' && prevUserInp != 'd') { Direction.x = -1; Direction.y = 0; prevUserInp = userInp; }
+			else if (userInp == 's' && prevUserInp != 'w') { Direction.x = 0; Direction.y = 1; prevUserInp = userInp; }
+			else if (userInp == 'd' && prevUserInp != 'a') { Direction.x = 1; Direction.y = 0; prevUserInp = userInp; }
 			else if (userInp == 'e') { std::string str; std::getline(std::cin, str); }
 			else if (userInp == '`') { break; }
 			else if (userInp == 'P') { appleEaten = true; }
 		}
 
-		snake.push_back({ snake.back()[0] + xVec, snake.back()[1] + yVec });
+		snake.push_back({ snake.back()[0] + Direction.x, snake.back()[1] + Direction.y });
 		if (!appleEaten) { snake.erase(snake.begin()); }
 		else { appleEaten = false; }
 
@@ -101,12 +105,7 @@ int main() {
 			do {
 				apple[0] = rd() % boardSize[0] + 1;
 				apple[1] = rd() % boardSize[1] + 1;
-
-				if (std::find(snake.begin(), snake.end(), std::array<int, 2> { apple[0], apple[1] }) == snake.end()) {
-					break;
-				}
-
-			} while (true);
+			} while (std::find(snake.begin(), snake.end(), std::array<int, 2> { apple[0], apple[1] }) != snake.end());
 
 			drawSection(apple[0], apple[1], Apple);
 		}
@@ -117,7 +116,7 @@ int main() {
 	} while (true);
 
 	moveCursor(1, boardSize[1] + 1);
-	colorConsole(0, 0, 0);
+	clearColor();
 
 	std::cout << "You lose!\nSCORE: " << snake.size() - 1;
 	std::cin.get();
