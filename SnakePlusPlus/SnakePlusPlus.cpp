@@ -1,7 +1,6 @@
 #include <iostream>
 #include <vector>
 #include <array>
-#include <string>
 #include <conio.h>
 #include <chrono>
 #include <thread>
@@ -66,11 +65,10 @@ void drawBoard() {
 }
 
 int main() {
-	std::random_device rd;
+	std::random_device rand;
 
 	char prevUserInp = 'd';
 	Vector2i Direction = Vector2i(1, 0);
-	bool appleEaten = false;
 
 	std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
@@ -79,8 +77,10 @@ int main() {
 	drawSection(apple[0], apple[1], Apple);
 
 	do {
+		// Draw the board on the section of snake that no longer exists.
 		drawSection(snake.front()[0], snake.front()[1], Board);
 
+		// Get the user input.
 		if (_kbhit()) {
 			char userInp = _getch();
 
@@ -88,28 +88,26 @@ int main() {
 			else if (userInp == 'a' && prevUserInp != 'd') { Direction.x = -1; Direction.y = 0; prevUserInp = userInp; }
 			else if (userInp == 's' && prevUserInp != 'w') { Direction.x = 0; Direction.y = 1; prevUserInp = userInp; }
 			else if (userInp == 'd' && prevUserInp != 'a') { Direction.x = 1; Direction.y = 0; prevUserInp = userInp; }
-			else if (userInp == 'e') { std::string str; std::getline(std::cin, str); }
-			else if (userInp == '`') { break; }
-			else if (userInp == 'P') { appleEaten = true; }
 		}
 
+		// Update snake position.
 		snake.push_back({ snake.back()[0] + Direction.x, snake.back()[1] + Direction.y });
-		if (!appleEaten) { snake.erase(snake.begin()); }
-		else { appleEaten = false; }
 
+		// Check if apple is eaten. If not, erase last section of snake.
+		if (snake.back()[0] == apple[0] && snake.back()[1] == apple[1]) {
+			do {
+				apple[0] = rand() % boardSize[0] + 1;
+				apple[1] = rand() % boardSize[1] + 1;
+			} while (std::find(snake.begin(), snake.end(), std::array<int, 2> { apple[0], apple[1] }) != snake.end());
+			drawSection(apple[0], apple[1], Apple);
+		}
+		else { snake.erase(snake.begin()); }
+
+		// Check if snake is out of bounds, or snake has collided with itself.
 		if (snake.back()[0] <= 0 || snake.back()[1] <= 0 || snake.back()[0] > boardSize[0] || snake.back()[1] > boardSize[1]) { break; }
 		if (std::find(snake.begin(), snake.end() - 1, snake.back()) != snake.end() - 1) { break; }
 
-		if (snake.back()[0] == apple[0] && snake.back()[1] == apple[1]) {
-			appleEaten = true;
-			do {
-				apple[0] = rd() % boardSize[0] + 1;
-				apple[1] = rd() % boardSize[1] + 1;
-			} while (std::find(snake.begin(), snake.end(), std::array<int, 2> { apple[0], apple[1] }) != snake.end());
-
-			drawSection(apple[0], apple[1], Apple);
-		}
-
+		// Draw snake section.
 		drawSection(static_cast<int>(snake.back()[0]), static_cast<int>(snake.back()[1]), Snake);
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(50));
